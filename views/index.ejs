@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>easysql</title>
+  <link rel="stylesheet" href="/public/style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <div class="container">
+    <h1>easysql</h1>
+    <form id="qform" method="post" action="/query">
+      <input id="question" name="question" placeholder="Ask a question (e.g., top 5 products by revenue in 2024)" value="<%= question %>" required />
+      <button type="submit">Ask</button>
+    </form>
+
+    <% if(sql) { %>
+      <section class="card">
+        <h2>Generated SQL</h2>
+        <pre id="sql"><%= sql %></pre>
+      </section>
+    <% } %>
+
+    <% if(rows && rows.length>0) { %>
+      <section class="card">
+        <h2>Results</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <% cols.forEach(c=>{ %><th><%= c %></th><% }) %>
+              </tr>
+            </thead>
+            <tbody>
+              <% rows.forEach(r=>{ %>
+                <tr>
+                  <% cols.forEach(c=>{ %><td><%= r[c] %></td><% }) %>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+        <canvas id="chart"></canvas>
+      </section>
+    <% } else if(sql && (!rows || rows.length===0)) { %>
+      <section class="card">
+        <h2>No results</h2>
+        <p>No rows returned or query failed to execute.</p>
+      </section>
+    <% } %>
+
+  </div>
+
+  <script>
+    (function(){
+      const rows = <%- JSON.stringify(rows || []) %>
+      const cols = <%- JSON.stringify(cols || []) %>
+      if(rows.length>0){
+        const numericCols = cols.filter(c=>{
+          for(let i=0;i<rows.length;i++){
+            const v = rows[i][c]
+            if(v!==null && v!==undefined && typeof v === 'number') return true
+            if(!isNaN(Number(v)) && v!==null && v!==undefined) return true
+          }
+          return false
+        })
+        if(numericCols.length>0){
+          const labelCol = cols[0]
+          const valueCol = numericCols[0]
+          const labels = rows.slice(0,10).map(r=>String(r[labelCol]))
+          const data = rows.slice(0,10).map(r=>Number(r[valueCol])||0)
+          const ctx = document.getElementById('chart').getContext('2d')
+          new Chart(ctx, { type: 'bar', data: { labels, datasets: [{ label: valueCol, data }] }, options: { responsive: true } })
+        } else {
+          document.getElementById('chart').style.display = 'none'
+        }
+      }
+    })()
+  </script>
+</body>
+</html>
